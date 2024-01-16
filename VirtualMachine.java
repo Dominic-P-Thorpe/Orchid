@@ -54,9 +54,9 @@ public class VirtualMachine {
      */
     public void execute() {
         while (programCounter >= 0 && programCounter < 0x00FFFFFF) {
-            programCounter = this.program.get(programCounter).execute(
-                stack, framePointer, programCounter);
+            programCounter = this.program.get(programCounter).execute(stack, framePointer, programCounter);
         }
+        
         printStack();
     }
 
@@ -77,12 +77,13 @@ public class VirtualMachine {
             case 0x02: return new instructions.Sub();
             case 0x03: return new instructions.Mult();
             case 0x04: return new instructions.Div();
+            case 0x0A: return new instructions.Gt();
             case 0x0E: return new instructions.Ret();
             case 0x12: return new instructions.Pushi(argument);
             case 0x15: return new instructions.Jump(argument);
+            case 0x16: return new instructions.JZro(argument);
             default: return null;
         }
-
     }
 
 
