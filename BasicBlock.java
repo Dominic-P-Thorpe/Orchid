@@ -13,6 +13,12 @@ public class BasicBlock implements IInstruction {
     private ArrayList<Integer> locationsWrittenTo;
 
 
+    /**
+     * Constructor for the BasicBlock class, entry and exit points are initialized to empty lists
+     * @param startAddr The address in the original source code of the first instruction in the basic block 
+     * @param contents The instructions in the basic block as IInstructions
+     * @param locationsWrittenTo The locations in memory (on the stack) which the basic block modifies
+     */
     public BasicBlock(Integer startAddr, ArrayList<IInstruction> contents, ArrayList<Integer> locationsWrittenTo) {
         this.startAddr = startAddr;
         this.contents = contents;
@@ -20,10 +26,17 @@ public class BasicBlock implements IInstruction {
     }
 
 
+    /**
+     * Executes the contents of the basic block, and will transfer execution to another basic block
+     * at the end, or will terminate execution of the program if there is no continuation in the 
+     * control flow graph.
+     * @param stack The current state of the stack at the start of the execution of the basic block
+     * @param framePointer Pointer to the address on the stack which is the start of the current stack frame
+     */
     public Integer execute(Stack<MemLocation> stack, Integer framePointer, Integer programCounter) {
         Integer newPC = programCounter;
         for (IInstruction instr : contents) {
-            newPC = instr.execute(stack, framePointer, programCounter);
+            newPC = instr.execute(stack, framePointer, newPC);
         }
 
         return newPC;

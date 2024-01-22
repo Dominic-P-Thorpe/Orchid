@@ -55,7 +55,6 @@ public class BasicBlockFactory {
 
     private BasicBlock getBasicBlockFromEntrypoint(ArrayList<BasicBlock> blocks, Integer target) {
         for (BasicBlock basicBlock : blocks) {
-            System.out.println("Finding " + target / 4 + " in " + basicBlock.getStartAddr());
             if (basicBlock.getStartAddr() == target / 4) 
                 return basicBlock;
         }
