@@ -2,12 +2,15 @@ package instructions;
 
 import java.util.Stack;
 
-public class Add implements IInstruction {
+public class Lt implements IInstruction {
     public Integer execute(Stack<MemLocation> stack, Integer framePointer, Integer programCounter) {
         Integer argA = stack.pop().read();
         Integer argB = stack.pop().read();
-        stack.push(new MemLocation(argA + argB));
-
+        if (argB < argA)
+            stack.push(new MemLocation(1));
+        else
+            stack.push(new MemLocation(0));
+            
         return programCounter + 1;
     }
 }

@@ -1,7 +1,9 @@
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Stack;
 
 import instructions.IInstruction;
+import instructions.MemLocation;
 
 
 /**
@@ -13,7 +15,7 @@ public class VirtualMachine {
     private static VirtualMachine vm = null;
     private Integer programCounter = 0;
     private Integer framePointer = 0;
-    private final Stack<Integer> stack = new Stack<Integer>();
+    private final Stack<MemLocation> stack = new Stack<MemLocation>();
     private final ArrayList<IInstruction> program = new ArrayList<IInstruction>();
 
 
@@ -29,6 +31,7 @@ public class VirtualMachine {
             instruction = (programBytes[i] & 0xFF) << 24 | (programBytes[i + 1] & 0xFF) << 16 | 
                             (programBytes[i + 2] & 0xFF) << 8 | (programBytes[i + 3] & 0xFF);
             this.program.add(getInstructionFromOpcode(instruction));
+            System.out.println(String.format("%d: 0x%08X", i / 4, instruction));
         }
     }
 
@@ -79,19 +82,25 @@ public class VirtualMachine {
             case 0x03: return new instructions.Mult();
             case 0x04: return new instructions.Div();
             case 0x0A: return new instructions.Gt();
+            case 0x0B: return new instructions.Lt();
             case 0x0E: return new instructions.Ret();
             case 0x12: return new instructions.Pushi(argument);
             case 0x13: return new instructions.Loadi(argument);
             case 0x14: return new instructions.Storei(argument);
             case 0x16: return new instructions.Jump(argument);
             case 0x17: return new instructions.JZro(argument);
-            default: return null;
+            case 0x18: return new instructions.Jnzro(argument);
+            case 0x1E: return new instructions.PhiNode();
+            default:   return null;
         }
     }
 
 
     /** Prints the current context of the stack */
     public void printStack() {
-        stack.forEach(System.out::println);
+        Iterator<MemLocation> stackIter = stack.iterator();
+        while (stackIter.hasNext()) {
+            System.out.println(stackIter.next().read());
+        }
     }
 }
