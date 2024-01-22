@@ -2,6 +2,7 @@ import java.util.ArrayList;
 
 import instructions.IInstruction;
 import instructions.IJump;
+import instructions.Ret;
 
 public class BasicBlockFactory {
     public ArrayList<BasicBlock> basicBlocks = new ArrayList<BasicBlock>();
@@ -79,6 +80,10 @@ public class BasicBlockFactory {
                     jumpToBasicBlock.addEntrypoint(blocks.get(i));
                     blocks.get(i).addExitpoint(jumpToBasicBlock);
                 } catch (NullPointerException e) {}
+            } 
+
+            else if (lastInstr instanceof Ret) {
+                return blocks;
             }
 
             // all blocks should have an exit point to the next block sequentially in the code
