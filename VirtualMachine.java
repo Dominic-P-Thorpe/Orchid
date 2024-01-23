@@ -54,7 +54,6 @@ public class VirtualMachine {
      */
     public void execute() {
         while (programCounter >= 0 && programCounter < 0x00FFFFFF) {
-            System.out.println(this.program.get(programCounter));
             programCounter = this.program.get(programCounter).execute(stack, framePointer, programCounter);
         }
         
@@ -79,13 +78,16 @@ public class VirtualMachine {
             case 0x03: return new instructions.Mult();
             case 0x04: return new instructions.Div();
             case 0x0A: return new instructions.Gt();
+            case 0x0B: return new instructions.Lt();
             case 0x0E: return new instructions.Ret();
             case 0x12: return new instructions.Pushi(argument);
             case 0x13: return new instructions.Loadi(argument);
             case 0x14: return new instructions.Storei(argument);
             case 0x16: return new instructions.Jump(argument);
             case 0x17: return new instructions.JZro(argument);
-            default: return null;
+            default:
+                System.err.println(String.format("Unknown opcode: 0x%08X", operand)); 
+                return null;
         }
     }
 
