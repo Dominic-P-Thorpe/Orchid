@@ -11,7 +11,7 @@ public class Loadi implements IInstruction {
     } 
 
 
-    public Integer execute(Stack<MemLocation> stack, Integer framePointer, Integer programCounter) {
+    public Integer execute(Stack<Integer> stack, Integer framePointer, Integer programCounter) {
         stack.push(stack.get(framePointer + argument / 4));
         return programCounter + 1;
     }

@@ -12,5 +12,5 @@ public interface IInstruction {
      * @param programCounter The current value of the program counter
      * @return The new value of the program counter
      */
-    public Integer execute(Stack<MemLocation> stack, Integer framePointer, Integer programCounter);
+    public Integer execute(Stack<Integer> stack, Integer framePointer, Integer programCounter);
 }

@@ -2,14 +2,17 @@ package instructions;
 
 import java.util.Stack;
 
-public class JZro extends IJump {
+public class JZro implements IInstruction {
+    private Integer argument;
+
+
     public JZro(Integer argument) {
-        super(argument);
+        this.argument = argument;
     } 
 
 
-    public Integer execute(Stack<MemLocation> stack, Integer framePointer, Integer programCounter) {
-        if (stack.pop().read() == 0)
+    public Integer execute(Stack<Integer> stack, Integer framePointer, Integer programCounter) {
+        if (stack.pop() == 0)
             return this.argument / 4; // divide by 4 to reflect going from bytes to 32 bit instrs
         else
             return programCounter + 1;

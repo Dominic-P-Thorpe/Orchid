@@ -3,13 +3,13 @@ package instructions;
 import java.util.Stack;
 
 public class Gt implements IInstruction {
-    public Integer execute(Stack<MemLocation> stack, Integer framePointer, Integer programCounter) {
-        Integer argA = stack.pop().read();
-        Integer argB = stack.pop().read();
+    public Integer execute(Stack<Integer> stack, Integer framePointer, Integer programCounter) {
+        Integer argA = stack.pop();
+        Integer argB = stack.pop();
         if (argB > argA)
-            stack.push(new MemLocation(1));
+            stack.push(1);
         else
-            stack.push(new MemLocation(0));
+            stack.push(0);
             
         return programCounter + 1;
     }

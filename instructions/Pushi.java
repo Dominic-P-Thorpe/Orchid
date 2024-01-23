@@ -9,8 +9,8 @@ public class Pushi implements IInstruction {
     }
 
 
-    public Integer execute(Stack<MemLocation> stack, Integer framePointer, Integer programCounter) {
-        stack.push(new MemLocation(argument));
+    public Integer execute(Stack<Integer> stack, Integer framePointer, Integer programCounter) {
+        stack.push(argument);
         return programCounter + 1;
     }
 }

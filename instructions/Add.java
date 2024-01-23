@@ -3,10 +3,10 @@ package instructions;
 import java.util.Stack;
 
 public class Add implements IInstruction {
-    public Integer execute(Stack<MemLocation> stack, Integer framePointer, Integer programCounter) {
-        Integer argA = stack.pop().read();
-        Integer argB = stack.pop().read();
-        stack.push(new MemLocation(argA + argB));
+    public Integer execute(Stack<Integer> stack, Integer framePointer, Integer programCounter) {
+        Integer argA = stack.pop();
+        Integer argB = stack.pop();
+        stack.push(argA + argB);
 
         return programCounter + 1;
     }

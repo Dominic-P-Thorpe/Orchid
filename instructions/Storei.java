@@ -11,7 +11,7 @@ public class Storei implements IInstruction {
     } 
 
 
-    public Integer execute(Stack<MemLocation> stack, Integer framePointer, Integer programCounter) {
+    public Integer execute(Stack<Integer> stack, Integer framePointer, Integer programCounter) {
         stack.set(framePointer + argument / 4, stack.pop());
         return programCounter + 1;
     }
