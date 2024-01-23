@@ -3,7 +3,6 @@ import java.util.Stack;
 
 import instructions.IInstruction;
 
-
 /**
  * A singleton class which takes a program binary in Orchid bytecode and can execute that code
  * and display the result of running the program. Simulates the program counter, frame pointer
@@ -12,9 +11,10 @@ import instructions.IInstruction;
 public class VirtualMachine {
     private static VirtualMachine vm = null;
     private Integer programCounter = 0;
-    private Integer framePointer = 0;
     private final Stack<Integer> stack = new Stack<Integer>();
     private final ArrayList<IInstruction> program = new ArrayList<IInstruction>();
+    
+    public static Integer framePointer = 0;
 
 
     /**
@@ -54,7 +54,19 @@ public class VirtualMachine {
      */
     public void execute() {
         while (programCounter >= 0 && programCounter < 0x00FFFFFF) {
+            Integer newFramePointer = framePointer;
+            
+            Integer oldPC = programCounter;
+            System.out.println(this.program.get(programCounter));
             programCounter = this.program.get(programCounter).execute(stack, framePointer, programCounter);
+            if (this.program.get(oldPC) instanceof instructions.Call) {
+                newFramePointer = stack.size() - 2;
+            }
+            if (this.program.get(oldPC) instanceof instructions.Ret) {
+                newFramePointer = stack.remove(stack.size() - 2); // remove and return 2nd from top elem on stack
+            }
+
+            framePointer = newFramePointer;
         }
         
         printStack();
@@ -85,6 +97,7 @@ public class VirtualMachine {
             case 0x14: return new instructions.Storei(argument);
             case 0x16: return new instructions.Jump(argument);
             case 0x17: return new instructions.JZro(argument);
+            case 0x19: return new instructions.Call(argument);
             default:
                 System.err.println(String.format("Unknown opcode: 0x%08X", operand)); 
                 return null;
