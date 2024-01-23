@@ -28,7 +28,26 @@ public class VirtualMachine {
         for (int i = 0; i < programBytes.length; i += 4) {
             instruction = (programBytes[i] & 0xFF) << 24 | (programBytes[i + 1] & 0xFF) << 16 | 
                             (programBytes[i + 2] & 0xFF) << 8 | (programBytes[i + 3] & 0xFF);
-            this.program.add(getInstructionFromOpcode(instruction));
+            
+            // get an object representing the instruction based on whether or not it is a single
+            // or double word instruction
+            IInstruction instructionInstance;
+            switch ((instruction & 0xFF000000) >> 24) {
+                case 0x19:
+                    int nextInstruction = (programBytes[i + 4] & 0xFF) << 24 | (programBytes[i + 5] & 0xFF) << 16 | 
+                                            (programBytes[i + 6] & 0xFF) << 8 | (programBytes[i + 7] & 0xFF);
+                    instructionInstance = getDoubleWordInstructionFromOpcode(instruction, nextInstruction);
+                    
+                    // skip next instruction in the case of a 2-word instruction
+                    i += 4;
+                    break;
+            
+                default:
+                    instructionInstance = getSingleWordInstructionFromOpcode(instruction);
+                    break;
+            }
+
+            this.program.add(instructionInstance);
         }
     }
 
@@ -56,13 +75,13 @@ public class VirtualMachine {
         while (programCounter >= 0 && programCounter < 0x00FFFFFF) {
             Integer newFramePointer = framePointer;
             
-            Integer oldPC = programCounter;
-            System.out.println(this.program.get(programCounter));
-            programCounter = this.program.get(programCounter).execute(stack, framePointer, programCounter);
-            if (this.program.get(oldPC) instanceof instructions.Call) {
-                newFramePointer = stack.size() - 2;
+            IInstruction instruction = this.program.get(programCounter);
+            programCounter = instruction.execute(stack, framePointer, programCounter);
+            if (instruction instanceof instructions.Call) {
+                Integer numArguments = ((instructions.Call)instruction).paramCount;
+                newFramePointer = stack.size() - 2 - numArguments;
             }
-            if (this.program.get(oldPC) instanceof instructions.Ret) {
+            if (instruction instanceof instructions.Ret) {
                 newFramePointer = stack.remove(stack.size() - 2); // remove and return 2nd from top elem on stack
             }
 
@@ -80,7 +99,7 @@ public class VirtualMachine {
      * @return The translated IInstruction
      * @see IInstruction
      */
-    public IInstruction getInstructionFromOpcode(int instruction) {
+    public IInstruction getSingleWordInstructionFromOpcode(int instruction) {
         int operand = instruction >> 24;
         int argument = instruction & 0x00FFFFFF;
         switch (operand) {
@@ -97,9 +116,20 @@ public class VirtualMachine {
             case 0x14: return new instructions.Storei(argument);
             case 0x16: return new instructions.Jump(argument);
             case 0x17: return new instructions.JZro(argument);
-            case 0x19: return new instructions.Call(argument);
             default:
-                System.err.println(String.format("Unknown opcode: 0x%08X", operand)); 
+                System.err.println(String.format("Unknown single word opcode: 0x%08X", operand)); 
+                return null;
+        }
+    }
+
+
+    public IInstruction getDoubleWordInstructionFromOpcode(int firstWord, int secondWord) {
+        int operand = firstWord >> 24;
+        int firstArgument = firstWord & 0x00FFFFFF;
+        switch (operand) {
+            case 0x19: return new instructions.Call(firstArgument, secondWord);
+            default:
+                System.err.println(String.format("Unknown double word opcode: 0x%08X", operand)); 
                 return null;
         }
     }
