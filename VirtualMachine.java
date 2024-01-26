@@ -24,8 +24,12 @@ public class VirtualMachine {
      * @param programBytes The program binary this VM will run
      */
     private VirtualMachine(byte[] programBytes) {
+        Integer dataSectionLength = (programBytes[0] & 0xFF) << 24 | (programBytes[1] & 0xFF) << 16 | 
+                                        (programBytes[2] & 0xFF) << 8 | (programBytes[3] & 0xFF);
+        System.out.println("DSL: " + dataSectionLength);
+
         int instruction = 0;
-        for (int i = 0; i < programBytes.length; i += 4) {
+        for (int i = dataSectionLength + 4; i < programBytes.length; i += 4) {
             instruction = (programBytes[i] & 0xFF) << 24 | (programBytes[i + 1] & 0xFF) << 16 | 
                             (programBytes[i + 2] & 0xFF) << 8 | (programBytes[i + 3] & 0xFF);
             
