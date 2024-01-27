@@ -2,6 +2,7 @@ import java.util.ArrayList;
 import java.util.Stack;
 
 import instructions.IInstruction;
+import instructions.Nop;
 
 /**
  * A singleton class which takes a program binary in Orchid bytecode and can execute that code
@@ -11,6 +12,7 @@ import instructions.IInstruction;
 public class VirtualMachine {
     private static VirtualMachine vm = null;
     private Integer programCounter = 0;
+    private ArrayList<CritcalSection> criticalSections = new ArrayList<CritcalSection>();
     private final Stack<Integer> stack = new Stack<Integer>();
     private final ArrayList<IInstruction> program = new ArrayList<IInstruction>();
     
@@ -26,7 +28,6 @@ public class VirtualMachine {
     private VirtualMachine(byte[] programBytes) {
         Integer dataSectionLength = (programBytes[0] & 0xFF) << 24 | (programBytes[1] & 0xFF) << 16 | 
                                         (programBytes[2] & 0xFF) << 8 | (programBytes[3] & 0xFF);
-        System.out.println("DSL: " + dataSectionLength);
 
         int instruction = 0;
         for (int i = dataSectionLength + 4; i < programBytes.length; i += 4) {
@@ -36,7 +37,8 @@ public class VirtualMachine {
             // get an object representing the instruction based on whether or not it is a single
             // or double word instruction
             IInstruction instructionInstance;
-            switch ((instruction & 0xFF000000) >> 24) {
+            System.out.println(String.format("Instr: %08X", (instruction & 0xFF000000) >>> 24));
+            switch ((instruction & 0xFF000000) >>> 24) {
                 case 0x19:
                     int nextInstruction = (programBytes[i + 4] & 0xFF) << 24 | (programBytes[i + 5] & 0xFF) << 16 | 
                                             (programBytes[i + 6] & 0xFF) << 8 | (programBytes[i + 7] & 0xFF);
@@ -45,6 +47,11 @@ public class VirtualMachine {
                     // skip next instruction in the case of a 2-word instruction
                     i += 4;
                     break;
+                
+                case 0xB2:
+                    instructionInstance = new Nop();
+                    i += 8;
+                    break;
             
                 default:
                     instructionInstance = getSingleWordInstructionFromOpcode(instruction);
@@ -52,6 +59,11 @@ public class VirtualMachine {
             }
 
             this.program.add(instructionInstance);
+        }
+
+        getCriticalSections();
+        for (CritcalSection c : criticalSections) {
+            System.out.println(c.startAddress + " to " + c.endAddress);
         }
     }
 
@@ -85,6 +97,7 @@ public class VirtualMachine {
                 Integer numArguments = ((instructions.Call)instruction).paramCount;
                 newFramePointer = stack.size() - 2 - numArguments;
             }
+
             if (instruction instanceof instructions.Ret) {
                 newFramePointer = stack.remove(stack.size() - 2); // remove and return 2nd from top elem on stack
             }
@@ -97,6 +110,25 @@ public class VirtualMachine {
 
 
     /**
+     * Initializes the critical sections field of the virtual machine by iterating through the
+     * loaded program and maintains a stack of the addresses of Lock instructions as it goes, 
+     * pairing them with Unlock instructions to get the address range within which the lock is
+     * effective. 
+     */
+    private void getCriticalSections() {
+        Stack<Integer> startAddressesStack = new Stack<Integer>();
+        for (int i = 0; i < program.size(); i++) {
+            if (program.get(i) instanceof instructions.Lock) {
+                startAddressesStack.push(i);
+            } else if (program.get(i) instanceof instructions.Unlock) {
+                Integer startAddr = startAddressesStack.pop();
+                criticalSections.add(new CritcalSection(startAddr, i));
+            }
+        }
+    }
+
+
+    /**
      * Takes a 32-bit instruction and returns the instruction translated to an IInstruction
      * which can be executed and put into program memory.
      * @param instruction The instruction binary to convert to an IInstruction
@@ -104,7 +136,7 @@ public class VirtualMachine {
      * @see IInstruction
      */
     public IInstruction getSingleWordInstructionFromOpcode(int instruction) {
-        int operand = instruction >> 24;
+        int operand = instruction >>> 24;
         int argument = instruction & 0x00FFFFFF;
         switch (operand) {
             case 0x00: return new instructions.Nop();
@@ -120,6 +152,11 @@ public class VirtualMachine {
             case 0x14: return new instructions.Storei(argument);
             case 0x16: return new instructions.Jump(argument);
             case 0x17: return new instructions.JZro(argument);
+            case 0xA2: return new instructions.Nop();
+            case 0xB0: return new instructions.Lock();
+            case 0xB1: return new instructions.Unlock();
+            case 0xB3: return new instructions.Nop(); // end handler
+            case 0xB4: return new instructions.Nop(); // start handler
             default:
                 System.err.println(String.format("Unknown single word opcode: 0x%08X", operand)); 
                 return null;
