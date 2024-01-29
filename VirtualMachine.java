@@ -15,10 +15,11 @@ import instructions.StartH;
 public class VirtualMachine {
     private static VirtualMachine vm = null;
     private Integer programCounter = 0;
-    private ArrayList<CritcalSection> criticalSections = new ArrayList<CritcalSection>();
-    private HashMap<Integer, Integer> activeHandlers = new HashMap<Integer, Integer>(); // function to handle -> handler
+    private final ArrayList<CritcalSection> criticalSections = new ArrayList<CritcalSection>();
+    private final HashMap<Integer, Integer> activeHandlers = new HashMap<Integer, Integer>(); // function to handle -> handler
     private final Stack<Integer> stack = new Stack<Integer>();
     private final ArrayList<IInstruction> program = new ArrayList<IInstruction>();
+    private final HashMap<Integer, MemoryItem> memory = new HashMap<Integer, MemoryItem>();
     
     public static Integer framePointer = 0;
 
@@ -32,7 +33,19 @@ public class VirtualMachine {
     private VirtualMachine(byte[] programBytes) {
         Integer dataSectionLength = (programBytes[0] & 0xFF) << 24 | (programBytes[1] & 0xFF) << 16 | 
                                         (programBytes[2] & 0xFF) << 8 | (programBytes[3] & 0xFF);
+        
+        // process the program data section
+        String memItem = new String();
+        Integer memStart = 0;
+        for (int i = 4; i < dataSectionLength + 4; i++) {
+            memItem += (char)programBytes[i];
+            if (programBytes[i] == 0) {
+                memory.put(memStart, new MemoryItem(MemoryType.STRING, (Object)memItem));
+                memStart = i - 4;
+            }
+        }
 
+        // process the program instructions section
         int instruction = 0;
         for (int i = dataSectionLength + 4; i < programBytes.length; i += 4) {
             instruction = (programBytes[i] & 0xFF) << 24 | (programBytes[i + 1] & 0xFF) << 16 | 
@@ -69,9 +82,6 @@ public class VirtualMachine {
         }
 
         getCriticalSections();
-        for (CritcalSection c : criticalSections) {
-            System.out.println(c.startAddress + " to " + c.endAddress);
-        }
     }
 
 
@@ -122,6 +132,9 @@ public class VirtualMachine {
                 if (activeHandlers.containsKey(0xFFFFFFF0)) {
                     stack.push(programCounter); // push a pseudo return pointer
                     programCounter = activeHandlers.get(0xFFFFFFF0) / 4;
+                } else {
+                    stack.pop(); // dont care about the ordering param on top of the stack
+                    System.out.println(memory.get(stack.pop()).getContents());
                 }
             }
 
