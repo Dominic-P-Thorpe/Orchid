@@ -1,8 +1,11 @@
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Stack;
 
+import instructions.Call;
+import instructions.EndH;
 import instructions.IInstruction;
-import instructions.Nop;
+import instructions.StartH;
 
 /**
  * A singleton class which takes a program binary in Orchid bytecode and can execute that code
@@ -13,6 +16,7 @@ public class VirtualMachine {
     private static VirtualMachine vm = null;
     private Integer programCounter = 0;
     private ArrayList<CritcalSection> criticalSections = new ArrayList<CritcalSection>();
+    private HashMap<Integer, Integer> activeHandlers = new HashMap<Integer, Integer>(); // function to handle -> handler
     private final Stack<Integer> stack = new Stack<Integer>();
     private final ArrayList<IInstruction> program = new ArrayList<IInstruction>();
     
@@ -37,7 +41,6 @@ public class VirtualMachine {
             // get an object representing the instruction based on whether or not it is a single
             // or double word instruction
             IInstruction instructionInstance;
-            System.out.println(String.format("Instr: %08X", (instruction & 0xFF000000) >>> 24));
             switch ((instruction & 0xFF000000) >>> 24) {
                 case 0x19:
                     int nextInstruction = (programBytes[i + 4] & 0xFF) << 24 | (programBytes[i + 5] & 0xFF) << 16 | 
@@ -49,7 +52,11 @@ public class VirtualMachine {
                     break;
                 
                 case 0xB2:
-                    instructionInstance = new Nop();
+                    int firstWordArg = (programBytes[i + 4] & 0xFF) << 24 | (programBytes[i + 5] & 0xFF) << 16 | 
+                                            (programBytes[i + 6] & 0xFF) << 8 | (programBytes[i + 7] & 0xFF);
+                    int secondWordArg = (programBytes[i + 8] & 0xFF) << 24 | (programBytes[i + 9] & 0xFF) << 16 | 
+                                            (programBytes[i + 10] & 0xFF) << 8 | (programBytes[i + 11] & 0xFF);
+                    instructionInstance = getTripleWordInstructionFromOpcode(instruction, firstWordArg, secondWordArg);
                     i += 8;
                     break;
             
@@ -94,12 +101,28 @@ public class VirtualMachine {
             IInstruction instruction = this.program.get(programCounter);
             programCounter = instruction.execute(stack, framePointer, programCounter);
             if (instruction instanceof instructions.Call) {
-                Integer numArguments = ((instructions.Call)instruction).paramCount;
+                Call callInstr = (instructions.Call)instruction;
+                Integer numArguments = callInstr.paramCount;
                 newFramePointer = stack.size() - 2 - numArguments;
             }
 
-            if (instruction instanceof instructions.Ret) {
+            else if (instruction instanceof instructions.Ret) {
                 newFramePointer = stack.remove(stack.size() - 2); // remove and return 2nd from top elem on stack
+            }
+
+            else if (instruction instanceof instructions.StartH) {
+                StartH startH = (StartH)instruction;
+                activeHandlers.put(startH.funcToHandleAddr, startH.handlerAddr);
+            } else if (instruction instanceof instructions.EndH) {
+                EndH endH = (EndH)instruction;
+                activeHandlers.remove(endH.funcToHandleAddr);
+            }
+
+            else if (instruction instanceof instructions.Print) {
+                if (activeHandlers.containsKey(0xFFFFFFF0)) {
+                    stack.push(programCounter); // push a pseudo return pointer
+                    programCounter = activeHandlers.get(0xFFFFFFF0) / 4;
+                }
             }
 
             framePointer = newFramePointer;
@@ -152,11 +175,13 @@ public class VirtualMachine {
             case 0x14: return new instructions.Storei(argument);
             case 0x16: return new instructions.Jump(argument);
             case 0x17: return new instructions.JZro(argument);
+            case 0xA0: return new instructions.Print();
+            case 0xA1: return new instructions.Nop();
             case 0xA2: return new instructions.Nop();
             case 0xB0: return new instructions.Lock();
             case 0xB1: return new instructions.Unlock();
-            case 0xB3: return new instructions.Nop(); // end handler
-            case 0xB4: return new instructions.Nop(); // start handler
+            case 0xB3: return new instructions.EndH(argument); // end handler
+            case 0xB4: return new instructions.RetH(); // return from handler
             default:
                 System.err.println(String.format("Unknown single word opcode: 0x%08X", operand)); 
                 return null;
@@ -171,6 +196,18 @@ public class VirtualMachine {
             case 0x19: return new instructions.Call(firstArgument, secondWord);
             default:
                 System.err.println(String.format("Unknown double word opcode: 0x%08X", operand)); 
+                return null;
+        }
+    }
+
+
+    public IInstruction getTripleWordInstructionFromOpcode(int firstWord, int secondWord, int thirdWord) {
+        int operand = firstWord >>> 24;
+        int firstArgument = firstWord & 0x00FFFFFF;
+        switch (operand) {
+            case 0xB2: return new instructions.StartH(firstArgument, secondWord, thirdWord);
+            default:
+                System.err.println(String.format("Unknown triple word opcode: 0x%08X", operand)); 
                 return null;
         }
     }
