@@ -12,6 +12,7 @@ public class Loadi implements IInstruction {
 
 
     public Integer execute(Stack<Integer> stack, Integer framePointer, Integer programCounter) {
+        System.out.println("Loading " + stack.get(framePointer + argument / 4) + " from " + (framePointer + argument / 4));
         stack.push(stack.get(framePointer + argument / 4));
         return programCounter + 1;
     }
