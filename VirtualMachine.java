@@ -39,10 +39,6 @@ public class VirtualMachine {
         memory = parser.getDataSection();
         program = parser.getProgram();
 
-        for (IInstruction ii : program) {
-            System.out.println(ii);
-        }
-
         getCriticalSections();
     }
 

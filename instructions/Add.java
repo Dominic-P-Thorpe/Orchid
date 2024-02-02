@@ -8,14 +8,6 @@ public class Add implements IInstruction {
         Integer argB = stack.pop();
         stack.push(argA + argB);
 
-        System.out.println("--------");
-        for (Integer integer : stack) {
-            System.out.println(integer);
-        }
-        System.out.println("--------");
-        System.out.println("FP: " + framePointer);
-        System.out.println(argA + " + " + argB + " = " + (argA + argB));
-
         return programCounter + 1;
     }
 }
