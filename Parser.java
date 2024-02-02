@@ -105,6 +105,7 @@ public class Parser {
             case 0xB1: return new instructions.Unlock();
             case 0xB3: return new instructions.EndH(argument); // end handler
             case 0xB4: return new instructions.RetH(); // return from handler
+            case 0xB6: return new instructions.LoadHP(argument);
             default:
                 System.err.println(String.format("Unknown single word opcode: 0x%08X", operand)); 
                 return null;

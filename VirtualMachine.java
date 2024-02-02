@@ -5,6 +5,7 @@ import java.util.Stack;
 import instructions.Call;
 import instructions.EndH;
 import instructions.IInstruction;
+import instructions.LoadHP;
 import instructions.StartH;
 
 /**
@@ -18,6 +19,7 @@ public class VirtualMachine {
     private final ArrayList<CritcalSection> criticalSections = new ArrayList<CritcalSection>();
     private final HashMap<Integer, HandlerData> activeHandlers = new HashMap<Integer, HandlerData>(); // function to handle -> handler
     private final Stack<Integer> stack = new Stack<Integer>();
+    private final Stack<Integer> handlerArgsStack = new Stack<Integer>();
     private final Stack<Integer> framePointerStack = new Stack<Integer>();
     private final HashMap<Integer, MemoryItem> memory;
     private final ArrayList<IInstruction> program;
@@ -91,6 +93,8 @@ public class VirtualMachine {
 
             else if (instruction instanceof instructions.Print) {
                 if (activeHandlers.containsKey(0xFFFFFFF0)) {
+                    handlerArgsStack.push(stack.pop()); // transfer ordering arg to handler args stack
+                    handlerArgsStack.push(stack.pop()); // transfer msg ptr arg to handler args stack
                     stack.push(programCounter); // push a pseudo return pointer
                     programCounter = activeHandlers.get(0xFFFFFFF0).handlerAddr / 4;
 
@@ -106,6 +110,11 @@ public class VirtualMachine {
 
             else if (instruction instanceof instructions.RetH) {
                 newFramePointer = framePointerStack.pop();
+            }
+
+            else if (instruction instanceof instructions.LoadHP) {
+                LoadHP loadHP = (LoadHP)instruction;
+                stack.set(framePointer + loadHP.address / 4, handlerArgsStack.pop());
             }
 
             framePointer = newFramePointer;
