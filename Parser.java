@@ -91,6 +91,7 @@ public class Parser {
             case 0x02: return new instructions.Sub();
             case 0x03: return new instructions.Mult();
             case 0x04: return new instructions.Div();
+            case 0x08: return new instructions.Eq();
             case 0x0A: return new instructions.Gt();
             case 0x0B: return new instructions.Lt();
             case 0x0E: return new instructions.Ret();
@@ -101,7 +102,7 @@ public class Parser {
             case 0x17: return new instructions.JZro(argument);
             case 0xA0: return new instructions.Print();
             case 0xA1: return new instructions.Read();
-            // case 0xA2: return new instructions.Nop();
+            case 0xA2: return new instructions.Throw();
             case 0xB0: return new instructions.Lock();
             case 0xB1: return new instructions.Unlock();
             case 0xB3: return new instructions.EndH(argument); // end handler

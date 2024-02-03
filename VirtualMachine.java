@@ -182,6 +182,22 @@ public class VirtualMachine {
                 }
             }
 
+            else if (instruction instanceof instructions.Throw) {
+                // execute this branch if the function has a handler (not a permit)
+                if (activeHandlers.containsKey(0xFFFFFFF2) && !activeHandlers.get(0xFFFFFFF2).peek().isPermit) {
+                    handlerArgsStack.push(stack.pop()); // transfer msg ptr arg to handler args stack
+                    stack.push(programCounter); // push a pseudo return pointer
+                    programCounter = activeHandlers.get(0xFFFFFFF2).peek().handlerAddr / 4;
+
+                    // during the handler, restore the frame pointer back to where it should be for
+                    // the function containing the handler
+                    framePointerStack.push(framePointer);
+                    newFramePointer = activeHandlers.get(0xFFFFFFF2).peek().framePtr;
+                } else { // if there is a permit for this effect, run it normally
+                    throw new RuntimeException(new Exception((String)memory.get(stack.pop()).getContents()));
+                }
+            }
+
             else if (instruction instanceof instructions.RetH) {
                 newFramePointer = framePointerStack.pop();
             }
