@@ -1,5 +1,7 @@
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Scanner;
 import java.util.Stack;
 
 import instructions.Call;
@@ -30,6 +32,7 @@ public class VirtualMachine {
     private final Stack<Integer> framePointerStack = new Stack<Integer>();
     private final HashMap<Integer, MemoryItem> memory;
     private final ArrayList<IInstruction> program;
+    private final Scanner scanner = new Scanner(System.in);
     
     public static Integer framePointer = 0;
 
@@ -61,6 +64,29 @@ public class VirtualMachine {
         if (vm == null)
             VirtualMachine.vm = new VirtualMachine(programBytes);
         return VirtualMachine.vm;
+    }
+
+
+    /**
+     * Gets the next free address in the VM's memory
+     * @return The next free address in the VM's memory
+     */
+    private Integer getNextMemoryAddress() {
+        // if memory is empty, just return 0
+        if (memory.size() == 0)
+            return 0;
+
+        // otherwise, get all the keys and sort them in descending order
+        ArrayList<Integer> keys = new ArrayList<Integer>();
+        for (Integer k : memory.keySet())
+            keys.add(k);
+
+        keys.sort(Collections.reverseOrder());
+        Integer maxAddress = keys.get(0); // get the largest address, which is the 1st element
+
+        // the new address is the largest address + the length of that address's contents 
+        String contents = (String)memory.get(maxAddress).getContents();
+        return maxAddress + contents.length();
     }
 
 
@@ -135,6 +161,24 @@ public class VirtualMachine {
                 } else { // if there is a permit for this effect, run it normally
                     stack.pop(); // dont care about the ordering param on top of the stack
                     System.out.println(memory.get(stack.pop()).getContents());
+                }
+            }
+
+            else if (instruction instanceof instructions.Read) {
+                // execute this branch if the function has a handler (not a permit)
+                if (activeHandlers.containsKey(0xFFFFFFF1) && !activeHandlers.get(0xFFFFFFF1).peek().isPermit) {
+                    stack.push(programCounter); // push a pseudo return pointer
+                    programCounter = activeHandlers.get(0xFFFFFFF1).peek().handlerAddr / 4;
+
+                    // during the handler, restore the frame pointer back to where it should be
+                    // for the function containing the handler
+                    framePointerStack.push(framePointer);
+                    newFramePointer = activeHandlers.get(0xFFFFFFF0).peek().framePtr;
+                } else { // if there is a permit for this effect, run it normally
+                    String input = scanner.nextLine();
+                    Integer address = getNextMemoryAddress();
+                    memory.put(address, new MemoryItem(MemoryType.STRING, input));
+                    stack.push(address);
                 }
             }
 

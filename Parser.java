@@ -100,8 +100,8 @@ public class Parser {
             case 0x16: return new instructions.Jump(argument);
             case 0x17: return new instructions.JZro(argument);
             case 0xA0: return new instructions.Print();
-            case 0xA1: return new instructions.Nop();
-            case 0xA2: return new instructions.Nop();
+            case 0xA1: return new instructions.Read();
+            // case 0xA2: return new instructions.Nop();
             case 0xB0: return new instructions.Lock();
             case 0xB1: return new instructions.Unlock();
             case 0xB3: return new instructions.EndH(argument); // end handler
