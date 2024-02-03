@@ -35,7 +35,8 @@ public class Parser {
             memItem += (char)dataBytes[i];
             if (dataBytes[i] == 0) {
                 memory.put(memStart, new MemoryItem(MemoryType.STRING, (Object)memItem));
-                memStart = i;
+                memStart = i + 1;
+                memItem = new String();
             }
         }
     }
