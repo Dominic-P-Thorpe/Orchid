@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Scanner;
 import java.util.Stack;
 
+import instructions.Arri;
 import instructions.Call;
 import instructions.EndH;
 import instructions.EndP;
@@ -68,6 +69,27 @@ public class VirtualMachine {
 
 
     /**
+     * Returns the length of the item in memory as a number of locations in memory
+     * @param address The address of the item to get the length of
+     * @return The length of the item as a number of memory locations (analagous to bytes)
+     */
+    private int getDataItemLength(int address) {
+        MemoryItem data = memory.get(address);
+        switch (data.memType) {
+            case STRING:
+                String strContents = (String)data.getContents();
+                return strContents.length();
+            
+            case INT_ARRAY:
+                int[] intArrayContents = (int[])data.getContents();
+                return intArrayContents.length;
+        }
+
+        return 0;
+    }
+
+
+    /**
      * Gets the next free address in the VM's memory
      * @return The next free address in the VM's memory
      */
@@ -85,8 +107,7 @@ public class VirtualMachine {
         Integer maxAddress = keys.get(0); // get the largest address, which is the 1st element
 
         // the new address is the largest address + the length of that address's contents 
-        String contents = (String)memory.get(maxAddress).getContents();
-        return maxAddress + contents.length();
+        return maxAddress + getDataItemLength(maxAddress);
     }
 
 
@@ -130,6 +151,24 @@ public class VirtualMachine {
 
             else if (instruction instanceof instructions.Ret) {
                 newFramePointer = stack.remove(stack.size() - 2); // remove and return 2nd from top elem on stack
+            }
+
+            else if (instruction instanceof instructions.Arri) {
+                Arri arrI = (Arri)instruction;
+                Integer address = getNextMemoryAddress();
+                memory.put(address, new MemoryItem(MemoryType.INT_ARRAY, new int[arrI.length]));
+                stack.push(address);
+            } else if (instruction instanceof instructions.Storeai) {
+                Integer index = stack.pop();
+                Integer value = stack.pop();
+                int[] array = (int[])memory.get(stack.peek()).getContents();
+                array[index] = value;
+                memory.get(stack.peek()).setContents(array);
+            } else if (instruction instanceof instructions.Loadai) {
+                Integer index = stack.pop();
+                Integer address = stack.pop();
+                int[] array = (int[])memory.get(address).getContents();
+                stack.push(array[index]);
             }
 
             else if (instruction instanceof instructions.StartH) {

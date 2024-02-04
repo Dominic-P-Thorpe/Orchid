@@ -1,3 +1,4 @@
 public enum MemoryType {
-    STRING
+    STRING,
+    INT_ARRAY
 }

@@ -100,6 +100,9 @@ public class Parser {
             case 0x14: return new instructions.Storei(argument);
             case 0x16: return new instructions.Jump(argument);
             case 0x17: return new instructions.JZro(argument);
+            case 0x1A: return new instructions.Arri(argument);
+            case 0x1B: return new instructions.Storeai();
+            case 0x1E: return new instructions.Loadai();
             case 0xA0: return new instructions.Print();
             case 0xA1: return new instructions.Read();
             case 0xA2: return new instructions.Throw();
