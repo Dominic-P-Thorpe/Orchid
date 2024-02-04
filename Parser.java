@@ -103,6 +103,8 @@ public class Parser {
             case 0x1A: return new instructions.Arri(argument);
             case 0x1B: return new instructions.Storeai();
             case 0x1E: return new instructions.Loadai();
+            case 0x1F: return new instructions.CCatS();
+            case 0x20: return new instructions.CCatA();
             case 0xA0: return new instructions.Print();
             case 0xA1: return new instructions.Read();
             case 0xA2: return new instructions.Throw();

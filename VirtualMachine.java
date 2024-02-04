@@ -1,3 +1,4 @@
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -133,6 +134,43 @@ public class VirtualMachine {
 
 
     /**
+     * THIS CODE WAS COPIED FROM BAELDUNG (https://www.baeldung.com/java-concatenate-arrays),
+     * accessed 2024/02/04.
+     * 
+     * Takes 2 arrays with the inner type T and returns an array the same as the first with the 
+     * second appended.
+     * @param <T> The inner type of the arrays to be concatenated, and of the resulting array
+     * @param array1 The array which should be at the start of the new array
+     * @param array2 The array which should be at the end of the new array
+     * @return The new array: array1 + array2
+     */
+    private <T> T concatArrays(T array1, T array2) {
+        if (!array1.getClass().isArray() || !array2.getClass().isArray()) {
+            throw new IllegalArgumentException("Only arrays are accepted.");
+        }
+    
+        Class<?> compType1 = array1.getClass().getComponentType();
+        Class<?> compType2 = array2.getClass().getComponentType();
+    
+        if (!compType1.equals(compType2)) {
+            throw new IllegalArgumentException("Two arrays have different types.");
+        }
+    
+        int len1 = Array.getLength(array1);
+        int len2 = Array.getLength(array2);
+    
+        @SuppressWarnings("unchecked")
+        //the cast is safe due to the previous checks
+        T result = (T) Array.newInstance(compType1, len1 + len2);
+    
+        System.arraycopy(array1, 0, result, 0, len1);
+        System.arraycopy(array2, 0, result, len1, len2);
+    
+        return result;
+    }
+
+
+    /**
      * Executes the current program in the program memory. Will terminate when the program
      * counter's value is outside the range 0 - 0x00FFFFFE, which is the signal to halt the
      * execution. Prints the stack after execution.
@@ -169,6 +207,22 @@ public class VirtualMachine {
                 Integer address = stack.pop();
                 int[] array = (int[])memory.get(address).getContents();
                 stack.push(array[index]);
+            }
+
+            else if (instruction instanceof instructions.CCatS) {
+                String postfix = (String)memory.get(stack.pop()).getContents();
+                String prefix = (String)memory.get(stack.pop()).getContents();
+                Integer address = getNextMemoryAddress();
+                memory.put(address, new MemoryItem(MemoryType.STRING, prefix + postfix));
+                stack.push(address);
+            } else if (instruction instanceof instructions.CCatA) {
+                int[] postfix = (int[])memory.get(stack.pop()).getContents();
+                int[] prefix = (int[])memory.get(stack.pop()).getContents();
+                int[] concatenated = concatArrays(prefix, postfix);
+
+                Integer address = getNextMemoryAddress();
+                memory.put(address, new MemoryItem(MemoryType.INT_ARRAY, (Object)concatenated));
+                stack.push(address);
             }
 
             else if (instruction instanceof instructions.StartH) {
