@@ -105,6 +105,7 @@ public class Parser {
             case 0x1E: return new instructions.Loadai();
             case 0x1F: return new instructions.CCatS();
             case 0x20: return new instructions.CCatA();
+            case 0x21: return new instructions.LoadSC();
             case 0xA0: return new instructions.Print();
             case 0xA1: return new instructions.Read();
             case 0xA2: return new instructions.Throw();

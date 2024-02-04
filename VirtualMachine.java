@@ -207,6 +207,11 @@ public class VirtualMachine {
                 Integer address = stack.pop();
                 int[] array = (int[])memory.get(address).getContents();
                 stack.push(array[index]);
+            } else if (instruction instanceof instructions.LoadSC) {
+                Integer index = stack.pop();
+                Integer address = stack.pop();
+                String string = (String)memory.get(address).getContents();
+                stack.push((int)string.charAt(index));
             }
 
             else if (instruction instanceof instructions.CCatS) {
