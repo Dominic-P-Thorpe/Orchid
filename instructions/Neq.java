@@ -2,17 +2,12 @@ package instructions;
 
 import java.util.Stack;
 
-public class Lte implements IInstruction {
+public class Neq implements IInstruction {
     public Integer execute(Stack<Integer> stack, Integer framePointer, Integer programCounter) {
         Integer argA = stack.pop();
         Integer argB = stack.pop();
-        if (argB <= argA) {
-            stack.push(1);
-        }
-        else {
-            stack.push(0);
-        }
-            
+        stack.push(argA != argB ? 1 : 0);
+
         return programCounter + 1;
     }
 }
