@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Scanner;
 import java.util.Stack;
+import java.util.stream.IntStream;
 
 import instructions.Arri;
 import instructions.Call;
@@ -303,6 +304,16 @@ public class VirtualMachine {
             else if (instruction instanceof instructions.LoadHP) {
                 LoadHP loadHP = (LoadHP)instruction;
                 stack.set(framePointer + loadHP.address / 4, handlerArgsStack.pop());
+            }
+
+            else if (instruction instanceof instructions.ArrRng) {
+                int end = stack.pop();
+                int start = stack.pop();
+                int[] arrayToStore = IntStream.range(start, end).toArray();
+
+                Integer address = getNextMemoryAddress();
+                memory.put(address, new MemoryItem(MemoryType.INT_ARRAY, (Object)arrayToStore));
+                stack.push(address);
             }
 
             framePointer = newFramePointer;

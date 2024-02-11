@@ -102,6 +102,7 @@ public class Parser {
             case 0x0C: return new instructions.Gte();
             case 0x0D: return new instructions.Lte();
             case 0x0E: return new instructions.Ret();
+            case 0x0F: return new instructions.Neg();
             case 0x12: return new instructions.Pushi(argument);
             case 0x13: return new instructions.Loadi(argument);
             case 0x14: return new instructions.Storei(argument);
@@ -121,6 +122,7 @@ public class Parser {
             case 0x28: return new instructions.GteF();
             case 0x29: return new instructions.LtF();
             case 0x2A: return new instructions.LteF();
+            case 0x2B: return new instructions.ArrRng();
             case 0xA0: return new instructions.Print();
             case 0xA1: return new instructions.Read();
             case 0xA2: return new instructions.Throw();
