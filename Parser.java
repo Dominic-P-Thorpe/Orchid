@@ -52,6 +52,7 @@ public class Parser {
             switch ((instruction & opcodeWordMask) >>> firstOperandBitLength) {
                 case 0x19: // double word opcode
                 case 0x22:
+                case 0x2C:
                     int nextInstruction = getWordFromIndex(programBytes, i + 4);
                     instructionInstance = getDoubleWordInstructionFromOpcode(instruction, nextInstruction);
                     
@@ -123,6 +124,8 @@ public class Parser {
             case 0x29: return new instructions.LtF();
             case 0x2A: return new instructions.LteF();
             case 0x2B: return new instructions.ArrRng();
+            case 0x2D: return new instructions.Length(); 
+            case 0x2E: return new instructions.Copy();
             case 0xA0: return new instructions.Print();
             case 0xA1: return new instructions.Read();
             case 0xA2: return new instructions.Throw();
@@ -146,6 +149,7 @@ public class Parser {
         switch (operand) {
             case 0x19: return new instructions.Call(firstArgument, secondWord);
             case 0x22: return new instructions.PushF(secondWord);
+            case 0x2C: return new instructions.Map(firstArgument, secondWord);
             default:
                 System.err.println(String.format("Unknown double word opcode: 0x%08X", operand)); 
                 return null;

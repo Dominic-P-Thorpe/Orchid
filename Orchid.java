@@ -10,7 +10,7 @@ class Orchid {
         Path path = Paths.get(filename);
         try {
             byte[] data = Files.readAllBytes(path);
-            VirtualMachine vm = VirtualMachine.getInstance(data);
+            VirtualMachine vm = new VirtualMachine(data);
             vm.execute();
         } catch (IOException e) {
             e.printStackTrace();

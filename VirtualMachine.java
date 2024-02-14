@@ -12,6 +12,7 @@ import instructions.EndH;
 import instructions.EndP;
 import instructions.IInstruction;
 import instructions.LoadHP;
+import instructions.Map;
 import instructions.StartH;
 import instructions.StartP;
 
@@ -20,8 +21,7 @@ import instructions.StartP;
  * and display the result of running the program. Simulates the program counter, frame pointer
  * and the stack.
  */
-public class VirtualMachine {
-    private static VirtualMachine vm = null;
+public class VirtualMachine extends Thread {
     private Integer programCounter = 0;
     private final ArrayList<CritcalSection> criticalSections = new ArrayList<CritcalSection>();
     /** 
@@ -37,16 +37,15 @@ public class VirtualMachine {
     private final ArrayList<IInstruction> program;
     private final Scanner scanner = new Scanner(System.in);
     
-    public static Integer framePointer = 0;
+    public Integer framePointer = 0;
 
 
     /**
-     * Private constructor for this class due to Singletop design pattern. Translates the 
-     * bytecode program in the byte array into IInstructions and puts them into the program
-     * memory for execution. 
+     * Translates the bytecode program in the byte array into IInstructions and puts them into the 
+     * program memory for execution. 
      * @param programBytes The program binary this VM will run
      */
-    private VirtualMachine(byte[] programBytes) {
+    public VirtualMachine(byte[] programBytes) {
         Parser parser = new Parser();
         parser.parse(programBytes);
         memory = parser.getDataSection();
@@ -56,17 +55,11 @@ public class VirtualMachine {
     }
 
 
-    /**
-     * Part of the singleton pattern this class uses. Creates a new instance of the VM and
-     * returns it, or returns the existing VM instance if one has already been created
-     * beforehand.
-     * @param programBytes The program binary the VM will run (ignored if no new instance created)
-     * @return The singleton instance of the virtual machine
-     */
-    public static VirtualMachine getInstance(byte[] programBytes) {
-        if (vm == null)
-            VirtualMachine.vm = new VirtualMachine(programBytes);
-        return VirtualMachine.vm;
+    public VirtualMachine(ArrayList<IInstruction> program, Integer framePointer, Integer programCounter, HashMap<Integer, MemoryItem> memory) {
+        this.program = program;
+        this.memory = memory;
+        this.framePointer = framePointer;
+        this.programCounter = programCounter;
     }
 
 
@@ -259,7 +252,6 @@ public class VirtualMachine {
                     newFramePointer = activeHandlers.get(0xFFFFFFF0).peek().framePtr;
                 } else { // if there is a permit for this effect, run it normally
                     stack.pop(); // dont care about the ordering param on top of the stack
-                    System.out.println(memory.get(stack.pop()).getContents());
                 }
             }
 
@@ -314,12 +306,69 @@ public class VirtualMachine {
                 Integer address = getNextMemoryAddress();
                 memory.put(address, new MemoryItem(MemoryType.INT_ARRAY, (Object)arrayToStore));
                 stack.push(address);
+            } else if (instruction instanceof instructions.Map) {
+                Integer address = getNextMemoryAddress();
+
+                Map mapInstr = (Map)instruction;
+                int[] array = (int[])memory.get(stack.pop()).getContents();
+
+                // create an array of new virtual machines to run the map code in parallel.
+                VirtualMachine[] vms = new VirtualMachine[array.length];
+                int[] newArray = new int[array.length];
+                for (int i = 0; i < array.length; i++) {
+                    vms[i] = new VirtualMachine(program, 0, mapInstr.targetAddr / 4, memory);
+                    vms[i].push(0);  // push starting frame pointer, which is 0
+                    vms[i].push(-1); // push return address which will terminate execution
+
+                    // add the parameter to the stack
+                    vms[i].push(array[i]);
+                    vms[i].run();
+                }
+
+                // synchronise all the parallel threads running the map code and insert their
+                // results into the new array
+                for (int i = 0; i < array.length; i++) {
+                    try {
+                        vms[i].join();
+                        newArray[i] = vms[i].pop();
+                    } catch (InterruptedException e) {
+                        System.err.println(e.getMessage());
+                        newArray[i] = -1;
+                    }
+                }
+
+                // add the new array to memory
+                memory.put(address, new MemoryItem(MemoryType.INT_ARRAY, (Object)newArray));
+                stack.push(address);
+            } else if (instruction instanceof instructions.Length) {
+                int[] array = (int[])memory.get(stack.pop()).getContents();
+                stack.push(array.length);
             }
 
             framePointer = newFramePointer;
         }
         
         printStack();
+    }
+
+
+    public void run() {
+        this.execute();
+    }
+
+
+    public Integer pop() {
+        return this.stack.pop();
+    }
+
+
+    public void push(Integer item) {
+        this.stack.push(item);
+    }
+
+
+    public Integer peek() {
+        return this.stack.peek();
     }
 
 
