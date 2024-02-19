@@ -173,7 +173,15 @@ public class VirtualMachine extends Thread {
         while (programCounter >= 0 && programCounter < 0x00FFFFFF) {
             Integer newFramePointer = framePointer;
             
-            IInstruction instruction = this.program.get(programCounter);
+
+            IInstruction instruction;
+            try {
+                instruction = this.program.get(programCounter);
+            } catch (IndexOutOfBoundsException e) {
+                break;
+            }
+
+
             programCounter = instruction.execute(stack, framePointer, programCounter);
             if (instruction instanceof instructions.Call) {
                 Call callInstr = (instructions.Call)instruction;
@@ -240,7 +248,7 @@ public class VirtualMachine extends Thread {
 
             else if (instruction instanceof instructions.Print) {
                 // execute this branch if the function has a handler (not a permit)
-                if (activeHandlers.containsKey(0xFFFFFFF0) && !activeHandlers.get(0xFFFFFFF0).peek().isPermit) {
+                if (activeHandlers.containsKey(0xFFFFFFF0) && !activeHandlers.get(0xFFFFFFF0).peek().isPermit) {                   
                     handlerArgsStack.push(stack.pop()); // transfer ordering arg to handler args stack
                     handlerArgsStack.push(stack.pop()); // transfer msg ptr arg to handler args stack
                     stack.push(programCounter); // push a pseudo return pointer
@@ -252,6 +260,8 @@ public class VirtualMachine extends Thread {
                     newFramePointer = activeHandlers.get(0xFFFFFFF0).peek().framePtr;
                 } else { // if there is a permit for this effect, run it normally
                     stack.pop(); // dont care about the ordering param on top of the stack
+                    String msg = (String)memory.get(stack.pop()).getContents();
+                    System.out.println(msg);
                 }
             }
 
@@ -343,6 +353,18 @@ public class VirtualMachine extends Thread {
             } else if (instruction instanceof instructions.Length) {
                 int[] array = (int[])memory.get(stack.pop()).getContents();
                 stack.push(array.length);
+            }
+
+            else if (instruction instanceof instructions.StrToInt) {
+                String string = (String)memory.get(stack.pop()).getContents();
+                // remember to remove the null byte at the end of the string
+                stack.push(Integer.parseInt(string.substring(0, string.length() - 1)));
+            } else if (instruction instanceof instructions.IntToStr) {
+                String string = stack.pop().toString();
+                Integer address = getNextMemoryAddress();
+                
+                memory.put(address, new MemoryItem(MemoryType.STRING, string));
+                stack.push(address);
             }
 
             framePointer = newFramePointer;
