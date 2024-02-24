@@ -60,7 +60,8 @@ public class Parser {
                     i += 4;
                     break;
                 
-                case 0xB2: // triple word opcode
+                case 0xA6: // triple word opcode
+                case 0xB2: 
                     int firstWordArg = getWordFromIndex(programBytes, i + 4);
                     int secondWordArg = getWordFromIndex(programBytes, i + 8);
                     instructionInstance = getTripleWordInstructionFromOpcode(instruction, firstWordArg, secondWordArg);
@@ -131,6 +132,7 @@ public class Parser {
             case 0xA2: return new instructions.Throw();
             case 0xA3: return new instructions.StrToInt();
             case 0xA4: return new instructions.IntToStr();
+            case 0xA5: return new instructions.Await(argument);
             case 0xB0: return new instructions.Lock();
             case 0xB1: return new instructions.Unlock();
             case 0xB3: return new instructions.EndH(argument); // end handler
@@ -163,6 +165,7 @@ public class Parser {
         int operand = firstWord >>> firstOperandBitLength;
         int firstArgument = firstWord & operandWordMask;
         switch (operand) {
+            case 0xA6: return new instructions.PCallSI(firstArgument, secondWord, thirdWord);
             case 0xB2: return new instructions.StartH(firstArgument, secondWord, thirdWord);
             default:
                 System.err.println(String.format("Unknown triple word opcode: 0x%08X", operand)); 

@@ -1,4 +1,5 @@
 public enum MemoryType {
     STRING,
-    INT_ARRAY
+    INT_ARRAY,
+    PROMISE
 }

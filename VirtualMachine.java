@@ -7,12 +7,14 @@ import java.util.Stack;
 import java.util.stream.IntStream;
 
 import instructions.Arri;
+import instructions.Await;
 import instructions.Call;
 import instructions.EndH;
 import instructions.EndP;
 import instructions.IInstruction;
 import instructions.LoadHP;
 import instructions.Map;
+import instructions.PCallSI;
 import instructions.StartH;
 import instructions.StartP;
 
@@ -30,6 +32,14 @@ public class VirtualMachine extends Thread {
      * outer handlers are ignored over inner handlers.
      */
     private final HashMap<Integer, Stack<HandlerData>> activeHandlers = new HashMap<Integer, Stack<HandlerData>>();
+
+    /**
+     * Maps memory locations which contain promises to the threads which are executing their 
+     * promise. Each promise should be joined and then removed from the hashmap when a relevant
+     * await occurs.
+     */
+    private final HashMap<Integer, VirtualMachine> promises = new HashMap<Integer, VirtualMachine>();
+
     private final Stack<Integer> stack = new Stack<Integer>();
     private final Stack<Integer> handlerArgsStack = new Stack<Integer>();
     private final Stack<Integer> framePointerStack = new Stack<Integer>();
@@ -78,6 +88,9 @@ public class VirtualMachine extends Thread {
             case INT_ARRAY:
                 int[] intArrayContents = (int[])data.getContents();
                 return intArrayContents.length;
+            
+            case PROMISE:
+                throw new PromiseAccessException(address);
         }
 
         return 0;
@@ -181,7 +194,7 @@ public class VirtualMachine extends Thread {
                 break;
             }
 
-
+            // System.out.println(String.format("0x%08X: ", programCounter) + instruction);
             programCounter = instruction.execute(stack, framePointer, programCounter);
             if (instruction instanceof instructions.Call) {
                 Call callInstr = (instructions.Call)instruction;
@@ -317,7 +330,7 @@ public class VirtualMachine extends Thread {
                 memory.put(address, new MemoryItem(MemoryType.INT_ARRAY, (Object)arrayToStore));
                 stack.push(address);
             } else if (instruction instanceof instructions.Map) {
-                Integer address = getNextMemoryAddress();
+                Integer address = getNextMemoryAddress(); // address for the new array
 
                 Map mapInstr = (Map)instruction;
                 int[] array = (int[])memory.get(stack.pop()).getContents();
@@ -327,7 +340,7 @@ public class VirtualMachine extends Thread {
                 int[] newArray = new int[array.length];
                 for (int i = 0; i < array.length; i++) {
                     vms[i] = new VirtualMachine(program, 0, mapInstr.targetAddr / 4, memory);
-                    vms[i].push(0);  // push starting frame pointer, which is 0
+                    vms[i].push(0); // push starting frame pointer, which is 0
                     vms[i].push(-1); // push return address which will terminate execution
 
                     // add the parameter to the stack
@@ -350,7 +363,46 @@ public class VirtualMachine extends Thread {
                 // add the new array to memory
                 memory.put(address, new MemoryItem(MemoryType.INT_ARRAY, (Object)newArray));
                 stack.push(address);
-            } else if (instruction instanceof instructions.Length) {
+            } else if (instruction instanceof instructions.PCallSI) {
+                PCallSI pcallsiInstr = (PCallSI)instruction;
+
+                // create a VM to run the relevant code block in parallel
+                VirtualMachine vm = new VirtualMachine(program, 0, pcallsiInstr.funcStartAddr / 4, memory);
+                vm.push(0); // push starting frame pointer, which is 0
+                vm.push(-1); // push return address which will terminate execution
+
+                // pop the function arguments off this VM's stack and onto the new VM's stack
+                Stack<Integer> argsStack = new Stack<Integer>();
+                for (int index = 0; index < pcallsiInstr.numArgs; index++) {
+                    argsStack.push(stack.pop());
+                }
+
+                for (int index = 0; index < pcallsiInstr.numArgs; index++) {
+                    vm.push(argsStack.pop());
+                }
+
+                promises.put(pcallsiInstr.destinationAddr, vm);
+                vm.run();
+            } else if (instruction instanceof instructions.Await) {
+                Await awaitInstr = (Await)instruction;
+                if (promises.get(awaitInstr.addr) != null) {
+                    VirtualMachine vmThread = promises.get(awaitInstr.addr);
+                    if (vmThread == null) // skip if the promise has already been awaited
+                        continue;
+
+                    // otherwise, join the thread to sync it with the current thread
+                    try {
+                        vmThread.join();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e.getMessage());
+                    }
+                    
+                    stack.set(awaitInstr.addr / 4 + framePointer, vmThread.pop());
+                    promises.remove(awaitInstr.addr);
+                }
+            }
+            
+            else if (instruction instanceof instructions.Length) {
                 int[] array = (int[])memory.get(stack.pop()).getContents();
                 stack.push(array.length);
             }
@@ -369,7 +421,7 @@ public class VirtualMachine extends Thread {
 
             framePointer = newFramePointer;
         }
-        
+    
         printStack();
     }
 
@@ -415,6 +467,8 @@ public class VirtualMachine extends Thread {
 
     /** Prints the current context of the stack */
     public void printStack() {
+        System.out.println("----STACK----");
         stack.forEach(System.out::println);
+        System.out.println("-------------");
     }
 }
