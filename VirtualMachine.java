@@ -382,7 +382,7 @@ public class VirtualMachine extends Thread {
                 }
 
                 promises.put(pcallsiInstr.destinationAddr, vm);
-                vm.run();
+                vm.start();
             } else if (instruction instanceof instructions.Await) {
                 Await awaitInstr = (Await)instruction;
                 if (promises.get(awaitInstr.addr) != null) {
