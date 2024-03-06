@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Scanner;
 import java.util.Stack;
 import java.util.stream.IntStream;
+import java.util.Map.Entry;
 
 import instructions.Arri;
 import instructions.Await;
@@ -65,11 +66,25 @@ public class VirtualMachine extends Thread {
     }
 
 
-    public VirtualMachine(ArrayList<IInstruction> program, Integer framePointer, Integer programCounter, HashMap<Integer, MemoryItem> memory) {
+    @SuppressWarnings("unchecked")
+    public VirtualMachine(ArrayList<IInstruction> program, Integer framePointer, Integer programCounter, 
+                            HashMap<Integer, MemoryItem> memory, Stack<Integer> stack,
+                            HashMap<Integer, Stack<HandlerData>> handlers) {
         this.program = program;
         this.memory = memory;
         this.framePointer = framePointer;
         this.programCounter = programCounter;
+
+        // make sure the stack is a deep copy to prevent cross-thread modification
+        for (int i = 0; i < stack.size(); i++) {
+            this.stack.push(stack.get(i));
+        }
+
+        // make sure the active handlers hashmap is a deep copy, otherwise when another thread exits
+        // the handler, so to shall this one.
+        for (Entry<Integer, Stack<HandlerData>> entry : handlers.entrySet()) {
+            this.activeHandlers.put(entry.getKey(), (Stack<HandlerData>)entry.getValue().clone());
+        }
     }
 
 
@@ -260,8 +275,15 @@ public class VirtualMachine extends Thread {
             }
 
             else if (instruction instanceof instructions.Print) {
+                // throw a RuntimeError if this function is unhandled
+                Stack<HandlerData> handlerStack;
+                if (activeHandlers.containsKey(0xFFFFFFF0))
+                    handlerStack = activeHandlers.get(0xFFFFFFF0);
+                else
+                    throw new RuntimeException("Print function unhandled!");
+
                 // execute this branch if the function has a handler (not a permit)
-                if (activeHandlers.containsKey(0xFFFFFFF0) && !activeHandlers.get(0xFFFFFFF0).peek().isPermit) {                   
+                if (!handlerStack.peek().isPermit) {                   
                     handlerArgsStack.push(stack.pop()); // transfer ordering arg to handler args stack
                     handlerArgsStack.push(stack.pop()); // transfer msg ptr arg to handler args stack
                     stack.push(programCounter); // push a pseudo return pointer
@@ -339,7 +361,7 @@ public class VirtualMachine extends Thread {
                 VirtualMachine[] vms = new VirtualMachine[array.length];
                 int[] newArray = new int[array.length];
                 for (int i = 0; i < array.length; i++) {
-                    vms[i] = new VirtualMachine(program, 0, mapInstr.targetAddr / 4, memory);
+                    vms[i] = new VirtualMachine(program, 0, mapInstr.targetAddr / 4, memory, stack, activeHandlers);
                     vms[i].push(0); // push starting frame pointer, which is 0
                     vms[i].push(-1); // push return address which will terminate execution
 
@@ -367,7 +389,7 @@ public class VirtualMachine extends Thread {
                 PCallSI pcallsiInstr = (PCallSI)instruction;
 
                 // create a VM to run the relevant code block in parallel
-                VirtualMachine vm = new VirtualMachine(program, 0, pcallsiInstr.funcStartAddr / 4, memory);
+                VirtualMachine vm = new VirtualMachine(program, 0, pcallsiInstr.funcStartAddr / 4, memory, stack, activeHandlers);
                 vm.push(0); // push starting frame pointer, which is 0
                 vm.push(-1); // push return address which will terminate execution
 
